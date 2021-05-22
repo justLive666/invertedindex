@@ -18,24 +18,35 @@ class InvertedIndex:
         with open(file=filepath, mode='w') as json_file:
             json_file.write(self.json_object)
 
-    def query(self, words: list): # hello = [1,2,3] hi = [2,3,4]  -> [2,3]
+    def query(self, words: list):
         print("Поиск пересечений слов...")
         self.all_lists = []
         self.words = words
         for list in self.words:
             try:
-                self.all_lists.append(self.inverted_index[list])
+                self.all_lists.append(self.inverted_index[list])# [[1,2,3],[1,2,3]]
             except:
                 pass
         try:
-            self.crossing_obj = set.intersection(*map(set,self.all_lists)) # {1,2}
-        except():
+            self.crossing_obj = set.intersection(*map(set, self.all_lists)) # {1,2}
+        except:
             self.crossing_obj = {}
         self.crossing_arr = []
         for i in self.crossing_obj:
-            self.crossing_arr.append(i) # [1,2]
+            self.crossing_arr.append(i)  # [1,2]
         return self.crossing_arr
 
+    def save_query(self, original_wiki_path, save_path, cross_lines):
+        print("Запись пересечений в файл...")
+        self.original = load_documents(original_wiki_path)
+        self.lines_index_in_file = [] # [12,44] -> [0,2]
+        for i in cross_lines:
+            for j in enumerate(self.original[1]):
+                if i == j[1]:
+                    self.lines_index_in_file.append(j[0])
+        with open(file=save_path, encoding='utf-8', mode='w') as file:
+            for line in enumerate(self.lines_index_in_file):
+                file.write(f"{cross_lines[line[0]]} {' '.join(self.original[0][line[1]])}\n")
 
     @classmethod
     def load(cls, filepath):
@@ -91,14 +102,15 @@ def clear_stop_words(document, stop_words):
     return document
 
 
-
 def create_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-file_path','--w',type=str,default=DEFAULT_PATH_DOCUMENT,help='Enter wiki_sample path')
-    parser.add_argument('-json_path','--j',type=str,default="dictionary.json",help='Enter json file path to save it')
-    parser.add_argument('-stop_path','--s',type=str,default=DEFAULT_PATH_STOP_WORDS,help='Enter stop words path')
-    parser.add_argument('-load_index','--l',type=str,default="",help='Enter index file path to load it')
-    parser.add_argument('-query','--q', nargs='+',default="", help='Enter words to query them')
+    parser.add_argument('-file_path', '--w', type=str, default=DEFAULT_PATH_DOCUMENT, help='Enter wiki_sample path')
+    parser.add_argument('-json_path', '--j', type=str, default="dictionary.json",
+                        help='Enter json file path to save it')
+    parser.add_argument('-stop_path', '--s', type=str, default=DEFAULT_PATH_STOP_WORDS, help='Enter stop words path')
+    parser.add_argument('-load_index', '--l', type=str, default="", help='Enter index file path to load it')
+    parser.add_argument('-query', '--q', nargs='+', default="", help='Enter words to query them')
+    parser.add_argument('-q_save', '--q_s', type=str, default="crossing.txt", help='Enter path to save crossing lines')
 
     flags = parser.parse_args()
     return flags
@@ -107,13 +119,16 @@ def create_parser():
 def main():
     flags = create_parser()
 
-    if len(flags.l)>0:
+    if len(flags.l) > 0:
         ii = InvertedIndex.load(flags.l)
     else:
         ii = build_inverted_index(flags.w, flags.s)
         ii.dump(flags.j)
-    if len(flags.q)>0:
-        print(ii.query(flags.q))
+    if len(flags.q) > 0:
+        crossing = ii.query(flags.q)
+        print(crossing)
+        if len(flags.q_s) > 0:
+            ii.save_query(flags.w,flags.q_s,crossing)
 
 
 if __name__ == '__main__':
